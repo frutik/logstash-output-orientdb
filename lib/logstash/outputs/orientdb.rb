@@ -1,6 +1,7 @@
 require "logstash/namespace"
 require "logstash/outputs/base"
 require "stud/buffer"
+require_relative "orientdb-client"
 
 class LogStash::Outputs::OrientDB < LogStash::Outputs::Base
 
@@ -43,13 +44,24 @@ class LogStash::Outputs::OrientDB < LogStash::Outputs::Base
   config :idle_flush_time, :validate => :number, :default => 1
 
   def register
-
-    @host = Socket.gethostname.force_encoding(Encoding::UTF_8)
+    @host   = Socket.gethostname.force_encoding(Encoding::UTF_8)
+    config  = {
+      "url" => @url,
+      "username" => @username,
+      "password" => @password
+    }
+    @client = OrientDB::Client.new(config)
+    @client.connect(database)
 
   end
 
   def receive(event)
     return unless output?(event)
+    @client.new_document(@database, event)
+  end
+
+  def stop
+    @client.disconnect
   end
 
   private
